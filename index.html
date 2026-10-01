@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <meta name="theme-color" content="#1f8f4e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="RePulse" />
+  <meta name="description" content="RePulse Smart Campus — ADA University recycling verification" />
+  <link rel="manifest" href='data:application/manifest+json,{"name":"RePulse Smart Campus","short_name":"RePulse","display":"standalone","background_color":"%23eef5ed","theme_color":"%231f8f4e","start_url":"/"}' />
+  <title>RePulse Smart Campus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #eef5ed;
+      --card: #ffffff;
+      --border: #dfe9df;
+      --green: #1f8f4e;
+      --green-dark: #146b3a;
+      --green-soft: rgba(31, 143, 78, 0.08);
+      --green-soft-2: rgba(31, 143, 78, 0.16);
+      --text: #16241c;
+      --muted: #63736a;
+      --danger: #d92d43;
+      --danger-soft: rgba(217, 45, 67, 0.07);
+      --silver-1: #f5f7f8;
+      --silver-2: #d3dade;
+      --silver-3: #a1aab0;
+      --silver-4: #6b747a;
+      --shadow: 0 14px 36px rgba(16, 40, 26, 0.08);
+      --shadow-sm: 0 6px 18px rgba(16, 40, 26, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background:
+        radial-gradient(1000px 480px at 10% -10%, rgba(31, 143, 78, 0.07), transparent 55%),
+        radial-gradient(800px 420px at 100% 0%, rgba(31, 143, 78, 0.05), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body { padding: 0 0 48px; }
+
+    h1, h2, h3, .brand-name, .stat, .points-number, .rank, .rank-score, .hero-title, .log-line strong {
+      font-family: Orbitron, sans-serif;
+      letter-spacing: 0.03em;
+    }
+
+    .app-shell { max-width: 1120px; margin: 0 auto; padding: 18px 18px 0; }
+
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 2px 18px;
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: linear-gradient(160deg, var(--green), var(--green-dark));
+      box-shadow: 0 8px 18px rgba(31, 143, 78, 0.3);
+      font-size: 1.2rem;
+    }
+
+    .brand-name {
+      display: block;
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--green-dark);
+      line-height: 1;
+    }
+
+    .campus-pill {
+      border: 1px solid var(--green);
+      color: var(--green-dark);
+      background: var(--green-soft);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px var(--green-soft);
+      display: inline-block;
+    }
+
+    .hero-copy { text-align: center; padding: 12px 8px 22px; }
+
+    .eyebrow {
+      color: var(--green-dark);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .hero-title {
+      font-size: clamp(1.7rem, 5vw, 3.1rem);
+      font-weight: 800;
+      line-height: 1.14;
+      background: linear-gradient(180deg, var(--silver-1) 0%, var(--silver-2) 38%, var(--silver-3) 72%, var(--silver-4) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 2px 6px rgba(90, 100, 105, 0.18));
+    }
+
+    .hero-lede {
+      max-width: 640px;
+      margin: 12px auto 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.9fr;
+      gap: 16px;
+    }
+
+    .card, .panel, .roadmap-panel, .mission-card, .scanner-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .scanner-card, .mission-card { padding: 16px; }
+
+    .scanner-head, .panel-heading, .roadmap-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .scanner-title, .panel-title, .mission-title {
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .camera-chip, .roadmap-tag {
+      border: 1px solid var(--green);
+      color: var(--green-dark);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--green-soft);
+    }
+
+    .success-alert {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(31, 143, 78, 0.45);
+      background: var(--green-soft-2);
+      color: var(--green-dark);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      font-weight: 700;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .success-alert.hide {
+      display: none;
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    #cameraBox {
+      position: relative;
+      overflow: hidden;
+      min-height: 320px;
+      border-radius: 16px;
+      background: #0e1512;
+      border: 1.5px dashed var(--green);
+    }
+
+    #liveVideo {
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      object-fit: cover;
+      display: block;
+      background: #0e1512;
+    }
+
+    .stage-message {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: #cfd9d2;
+      pointer-events: none;
+      text-align: center;
+      padding: 16px;
+    }
+
+    .stage-message.hide { display: none; }
+    .stage-message strong { color: #ffffff; font-size: 0.95rem; }
+    .stage-message span { font-size: 0.78rem; }
+
+    .hud-corners::before, .hud-corners::after,
+    .hud-br::before, .hud-br::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--green);
+      z-index: 3;
+      pointer-events: none;
+    }
+    .hud-corners::before { top: 10px; left: 10px; border-right: 0; border-bottom: 0; }
+    .hud-corners::after { top: 10px; right: 10px; border-left: 0; border-bottom: 0; }
+    .hud-br::before { bottom: 10px; left: 10px; border-right: 0; border-top: 0; }
+    .hud-br::after { bottom: 10px; right: 10px; border-left: 0; border-top: 0; }
+
+    .scan-overlay {
+      pointer-events: none;
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+      box-shadow: 0 0 14px rgba(31, 143, 78, 0.7);
+      opacity: 0;
+      z-index: 4;
+    }
+
+    .scan-overlay.active {
+      opacity: 1;
+      animation: laserSweep 1.6s ease-in-out infinite;
+    }
+
+    @keyframes laserSweep {
+      0% { top: 8px; }
+      50% { top: calc(100% - 10px); }
+      100% { top: 8px; }
+    }
+
+    .stage-status {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.66rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8ff0b4;
+      font-weight: 700;
+    }
+
+    #captureCanvas { display: none; }
+
+    .cta {
+      width: 100%;
+      margin-top: 12px;
+      border: 0;
+      border-radius: 14px;
+      padding: 15px 12px;
+      font-family: Orbitron, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #ffffff;
+      background: linear-gradient(160deg, var(--green), var(--green-dark));
+      box-shadow: 0 10px 22px rgba(31, 143, 78, 0.32);
+    }
+
+    .cta.stop {
+      color: #fff;
+      background: var(--danger);
+      animation: pulseRed 0.85s ease-in-out infinite;
+      box-shadow: 0 10px 22px rgba(217, 45, 67, 0.32);
+    }
+
+    .cta.busy {
+      color: #7c8a80;
+      background: #e4ebe3;
+      box-shadow: none;
+      cursor: wait;
+    }
+
+    @keyframes pulseRed {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.15); }
+    }
+
+    .status {
+      margin-top: 10px;
+      min-height: 1.2em;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .status.ok { color: var(--green-dark); font-weight: 600; }
+    .status.bad { color: var(--danger); font-weight: 600; }
+
+    .mission-title { color: var(--text); margin-bottom: 8px; }
+    .mission-copy { color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
+
+    .mission-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .stat-tile {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--green-soft);
+    }
+
+    .stat-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-family: Orbitron, sans-serif;
+      color: var(--green-dark);
+      font-size: 1.15rem;
+    }
+
+    .stat-value small { font-size: 0.62rem; color: var(--muted); }
+
+    .telemetry {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f6faf5;
+      padding: 10px;
+      max-height: 148px;
+      overflow: auto;
+      font-size: 0.68rem;
+      color: #35473c;
+    }
+
+    .log-line { margin: 0 0 6px; font-family: Inter, monospace; color: #3d5346; }
+    .log-line strong { color: var(--green-dark); font-size: 0.62rem; }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .panel { padding: 16px; }
+
+    .panel-kicker {
+      color: var(--muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .points-number {
+      font-size: 1.6rem;
+      color: var(--green-dark);
+    }
+
+    .points-unit { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+
+    .progress-track {
+      height: 6px;
+      border-radius: 99px;
+      background: #e4ece2;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--green), var(--green-dark));
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .activity-list { margin-top: 8px; }
+    .activity-row {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+    }
+    .activity-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--green-soft-2);
+      color: var(--green-dark);
+      font-size: 0.78rem;
+    }
+    .activity-date { display: block; color: var(--muted); font-size: 0.7rem; }
+    .activity-points { color: var(--green-dark); font-family: Orbitron, sans-serif; font-size: 0.72rem; }
+    .empty-note { color: var(--muted); font-size: 0.8rem; padding: 10px 0; }
+
+    .board-row {
+      display: grid;
+      grid-template-columns: 28px 36px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+    }
+
+    .board-row.mine {
+      background: var(--green-soft-2);
+      border: 1px solid var(--green);
+      border-radius: 12px;
+      color: var(--green-dark);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--green-soft-2);
+      color: var(--green-dark);
+      font-family: Orbitron, sans-serif;
+      font-size: 0.62rem;
+      font-weight: 700;
+    }
+
+    .school-sub { display: block; color: var(--muted); font-size: 0.68rem; }
+    .rank { color: var(--green-dark); }
+    .rank-score { color: var(--green-dark); font-size: 0.75rem; }
+
+    .roadmap-panel { margin-top: 16px; padding: 18px 16px 8px; }
+
+    .timeline {
+      position: relative;
+      margin: 8px 0 12px;
+      padding-left: 22px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--green), rgba(31, 143, 78, 0.08));
+    }
+
+    .tl-item {
+      position: relative;
+      padding: 0 0 18px 14px;
+    }
+
+    .tl-dot {
+      position: absolute;
+      left: -19px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .tl-dot.future {
+      background: transparent;
+      border: 2px solid var(--green);
+    }
+
+    .step-title { font-family: Orbitron, sans-serif; font-size: 0.82rem; color: var(--green-dark); margin-bottom: 4px; }
+    .step-detail { color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
+
+    .site-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 22px 4px 8px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .footer-links { display: flex; gap: 14px; }
+    .footer-links a { color: var(--green-dark); text-decoration: none; font-weight: 600; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(15, 26, 19, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .overlay.show { display: flex; }
+
+    .modal {
+      width: min(480px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px 18px;
+      background: var(--card);
+      box-shadow: 0 24px 60px rgba(10, 20, 15, 0.28);
+    }
+
+    .modal h2 { color: var(--green-dark); font-size: 1.05rem; margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 0.85rem; margin-bottom: 14px; line-height: 1.45; }
+
+    .school-grid { display: grid; gap: 8px; }
+    .school-btn {
+      text-align: left;
+      border: 1px solid var(--border);
+      background: var(--green-soft);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-family: Inter, sans-serif;
+    }
+    .school-btn:hover { border-color: var(--green); }
+    .school-btn strong {
+      display: block;
+      font-family: Orbitron, sans-serif;
+      color: var(--green-dark);
+      font-size: 0.78rem;
+      margin-bottom: 2px;
+    }
+    .school-btn span { font-size: 0.72rem; color: var(--muted); }
+
+    .hint { margin-top: 12px; font-size: 0.7rem; color: #7c8b83; }
+
+    .fraud-alert {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(217, 45, 67, 0.35);
+      background: var(--danger-soft);
+      color: #a3223a;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      font-weight: 600;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .fraud-alert.hide {
+      display: none;
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    .board-row {
+      transition: background-color 0.35s ease, border-color 0.35s ease;
+    }
+
+    @media (max-width: 860px) {
+      .dashboard-grid, .overview-grid { grid-template-columns: 1fr; }
+      .header-status { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="welcomeOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <div class="modal">
+      <h2 id="welcomeTitle">WELCOME TO REPULSE</h2>
+      <p>Choose your ADA University school. Your verified recycling points stay with this faculty on this device.</p>
+      <div id="schoolGrid" class="school-grid"></div>
+    </div>
+  </div>
+
+  <main class="app-shell">
+    <header class="site-header">
+      <a class="brand-lockup" href="#top">
+        <span class="brand-mark" aria-hidden="true">♻</span>
+        <span class="brand-name">RePulse</span>
+      </a>
+      <span class="campus-pill">Smart Campus</span>
+      <div class="header-status"><span class="status-dot"></span> System online</div>
+    </header>
+
+    <section class="hero-copy" id="top">
+      <p class="eyebrow" id="heroEyebrow">ADA University · Smart Campus mission</p>
+      <h1 class="hero-title">Shaping Campus Sustainability</h1>
+      <p class="hero-lede">Point the rear camera at recyclable waste and drop it in the bin. RePulse captures three 640×640 snapshots over a 3.2 second window and runs them through our own YOLOv8 + OpenCV engine — self-hosted, no cloud AI call — turning a confirmed drop into +5 PTS for your school.</p>
+    </section>
+
+    <section class="dashboard-grid" aria-label="Scanner and campus pulse">
+      <article class="scanner-card">
+        <div class="scanner-head">
+          <div>
+            <p class="eyebrow">Live verification</p>
+            <h2 class="scanner-title">📷 Live AI Video Scanner</h2>
+          </div>
+          <span class="camera-chip" id="cameraChip">camera ready</span>
+        </div>
+        <div id="cameraBox" class="hud-corners">
+          <span class="hud-br"></span>
+          <div class="stage-status">
+            <span><span class="status-dot"></span> <span id="scanState">ready to scan</span></span>
+            <span>ADA / 01</span>
+          </div>
+          <video id="liveVideo" playsinline muted autoplay></video>
+          <div id="scanOverlay" class="scan-overlay"></div>
+          <div id="stageMessage" class="stage-message">
+            <strong>Ready when you are</strong>
+            <span>Center the item, keep it in motion, then drop it into the bin.</span>
+          </div>
+        </div>
+        <canvas id="captureCanvas"></canvas>
+        <button id="recordBtn" class="cta" type="button">Start Video Recording 📹</button>
+        <p id="statusLine" class="status">YOLOv8 + OpenCV · 3 frames · 1s spacing · 3.2s window · +5 PTS on verified drop</p>
+        <div id="successAlert" class="success-alert hide" role="status" aria-live="polite"></div>
+        <div id="fraudAlert" class="fraud-alert hide" role="alert" aria-live="polite"></div>
+      </article>
+
+      <aside class="mission-card">
+        <p class="eyebrow">The campus pulse</p>
+        <h2 class="mission-title">Small actions. A cleaner ADA.</h2>
+        <p class="mission-copy">Every verified item updates your school on the live leaderboard, with the material named by our own YOLOv8 engine.</p>
+        <div class="mission-meta">
+          <div class="stat-tile">
+            <span class="stat-label">Campus total</span>
+            <span class="stat-value"><span id="campusTotal">0</span> <small>PTS</small></span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Your school</span>
+            <span class="stat-value"><span id="userPoints">0</span> <small>PTS</small></span>
+          </div>
+        </div>
+        <p class="eyebrow" style="margin-top:16px;">Telemetry log</p>
+        <div id="telemetry" class="telemetry" aria-live="polite"></div>
+      </aside>
+    </section>
+
+    <section class="overview-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Your impact</p>
+            <h2 class="panel-title" id="impactTitle">Faculty points</h2>
+          </div>
+          <div>
+            <span class="points-number" id="impactPoints">0</span>
+            <span class="points-unit">PTS</span>
+          </div>
+        </div>
+        <div class="progress-track" aria-hidden="true"><div id="progressFill" class="progress-fill"></div></div>
+        <div class="progress-labels"><span>Session target</span><span>110 PTS</span></div>
+        <p class="panel-kicker" style="margin-top:14px;">Recent verifications</p>
+        <div id="activityList" class="activity-list"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Campus challenge</p>
+            <h2 class="panel-title">🏆 Campus Leaderboard</h2>
+          </div>
+          <span class="camera-chip" id="facultyChip">SCHOOL: —</span>
+        </div>
+        <div id="leaderboard"></div>
+        <p class="hint">Updated after each verified scan. Your school row is highlighted.</p>
+      </article>
+    </section>
+
+    <section class="roadmap-panel" id="how-it-works">
+      <div class="roadmap-header">
+        <div>
+          <p class="panel-kicker">What happens next</p>
+          <h2 class="panel-title">⚡ Strategic Roadmap</h2>
+        </div>
+        <span class="roadmap-tag">Expansion phases</span>
+      </div>
+      <div class="timeline">
+        <div class="tl-item">
+          <span class="tl-dot"></span>
+          <div class="step-title">Phase 1 · Native YOLOv8 + OpenCV verification</div>
+          <div class="step-detail">Rear-camera capture across a 3.2 second window, three 640×640 snapshots spaced 1 second apart, decoded with OpenCV and scored by an in-RAM YOLOv8 model running on our own container — no external API, no tokens.</div>
+        </div>
+        <div class="tl-item">
+          <span class="tl-dot"></span>
+          <div class="step-title">Phase 2 · ESP32 smart-lock actuation</div>
+          <div class="step-detail">A successful verification makes the backend fire a background GET at the physical lid lock on the campus bin network.</div>
+        </div>
+        <div class="tl-item">
+          <span class="tl-dot"></span>
+          <div class="step-title">Phase 3 · ADA 7-school leaderboard</div>
+          <div class="step-detail">SITE, SB, SPIA, LAW, SE, SAFS, and SDA compete in real time. Every valid drop is exactly +5 PTS.</div>
+        </div>
+        <div class="tl-item">
+          <span class="tl-dot future"></span>
+          <div class="step-title">Phase 4 · Campus-wide bin mesh</div>
+          <div class="step-detail">Expand verified bins across dorms, canteens, and faculty buildings with shared telemetry.</div>
+        </div>
+        <div class="tl-item">
+          <span class="tl-dot future"></span>
+          <div class="step-title">Phase 5 · City-scale recycling network</div>
+          <div class="step-detail">Export the RePulse protocol beyond ADA University as a municipal smart-waste layer.</div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer" id="privacy">
+      <span>RePulse · a Smart Campus initiative at ADA University</span>
+      <nav class="footer-links" aria-label="Support links">
+        <a href="#how-it-works">How it works</a>
+        <a href="mailto:repulse@ada.edu.az">Contact support</a>
+        <a href="#privacy">Privacy</a>
+      </nav>
+    </footer>
+  </main>
+
+  <script>
+    window.REPULSE_CONFIG = {
+      SMART_LOCK_URL: "http://192.168.4",
+      DETECT_URL: "/api/roboflow/detect",
+      POINTS_PER_SUCCESS: 5,
+      FRAME_GAP_MS: 1000,
+      START_DELAY_MS: 1200,
+      TOTAL_WINDOW_MS: 3200,
+      REQUIRED_FRAMES: 3
+    };
+
+    const SCHOOLS = [
+      { id: "SITE", name: "School of IT and Engineering (SITE)", short: "School of IT and Engineering", base: 2847 },
+      { id: "SB", name: "Business School (SB)", short: "Business School", base: 2261 },
+      { id: "SPIA", name: "School of Public & International Affairs (SPIA)", short: "Public & International Affairs", base: 2115 },
+      { id: "LAW", name: "School of Law (LAW)", short: "School of Law", base: 1980 },
+      { id: "SE", name: "School of Education (SE)", short: "School of Education", base: 1850 },
+      { id: "SAFS", name: "School of Agricultural & Food Sciences (SAFS)", short: "Agricultural & Food Sciences", base: 1720 },
+      { id: "SDA", name: "School of Design and Architecture (SDA)", short: "Design and Architecture", base: 1650 }
+    ];
+
+    const SCORE_KEY = "repulse_faculty_scores";
+    const FACULTY_KEY = "user_faculty";
+    const ACTIVITY_KEY = "repulse_activity";
+    const WEEKLY_TARGET = 110;
+
+    const video = document.getElementById("liveVideo");
+    const canvas = document.getElementById("captureCanvas");
+    const ctx = canvas.getContext("2d");
+    const recordBtn = document.getElementById("recordBtn");
+    const scanOverlay = document.getElementById("scanOverlay");
+    const statusLine = document.getElementById("statusLine");
+    const leaderboardEl = document.getElementById("leaderboard");
+    const facultyChip = document.getElementById("facultyChip");
+    const userPointsEl = document.getElementById("userPoints");
+    const telemetryEl = document.getElementById("telemetry");
+
+    let mediaStream = null;
+    let captureTimers = [];
+    let frames = [];
+    let capturing = false;
+    let processing = false;
+    let finishing = false;
+
+    function schoolById(id) {
+      for (let i = 0; i < SCHOOLS.length; i += 1) {
+        if (SCHOOLS[i].id === id) return SCHOOLS[i];
+      }
+      return null;
+    }
+
+    function nowStamp() {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return hh + ":" + mm + ":" + ss;
+    }
+
+    function logTelemetry(eventName, detail) {
+      const line = document.createElement("p");
+      line.className = "log-line";
+      line.innerHTML = "<strong>[" + nowStamp() + "] " + eventName + "</strong> " + (detail || "");
+      telemetryEl.prepend(line);
+      while (telemetryEl.childNodes.length > 40) {
+        telemetryEl.removeChild(telemetryEl.lastChild);
+      }
+    }
+
+    // The 7-day localStorage lockdown has been fully retired for the
+    // hackathon build. checkBanStatus() is kept as a documented no-op so the
+    // boot sequence still reads clearly, but it can never lock the app and
+    // #banOverlay no longer exists in the DOM.
+    function checkBanStatus() {
+      return;
+    }
+
+    let fraudAlertTimer = null;
+
+    function showFraudAlert() {
+      const alertEl = document.getElementById("fraudAlert");
+      if (!alertEl) return;
+      alertEl.textContent = "⚠️ RePulse AI: Waste item not detected. Please hold the item clearly in front of the camera.";
+      alertEl.classList.remove("hide");
+      logTelemetry("FRAUD_ALERT", "inline warning shown");
+      window.clearTimeout(fraudAlertTimer);
+      fraudAlertTimer = window.setTimeout(() => {
+        alertEl.classList.add("hide");
+      }, 6000);
+    }
+
+    function hideFraudAlert() {
+      const alertEl = document.getElementById("fraudAlert");
+      if (!alertEl) return;
+      window.clearTimeout(fraudAlertTimer);
+      alertEl.classList.add("hide");
+    }
+
+    let successAlertTimer = null;
+
+    function showSuccessAlert(material) {
+      const alertEl = document.getElementById("successAlert");
+      if (!alertEl) return;
+      alertEl.textContent = "✅ RePulse AI: Valid " + material + " detected! +5 PTS awarded!";
+      alertEl.classList.remove("hide");
+      logTelemetry("MATERIAL", material);
+      window.clearTimeout(successAlertTimer);
+      successAlertTimer = window.setTimeout(() => {
+        alertEl.classList.add("hide");
+      }, 6000);
+    }
+
+    function hideSuccessAlert() {
+      const alertEl = document.getElementById("successAlert");
+      if (!alertEl) return;
+      window.clearTimeout(successAlertTimer);
+      alertEl.classList.add("hide");
+    }
+
+    function defaultScores() {
+      const scores = {};
+      SCHOOLS.forEach((school) => { scores[school.id] = school.base; });
+      return scores;
+    }
+
+    function loadScores() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(SCORE_KEY) || "null");
+        const merged = defaultScores();
+        if (parsed && typeof parsed === "object") {
+          SCHOOLS.forEach((school) => {
+            const value = Number(parsed[school.id]);
+            if (Number.isFinite(value)) merged[school.id] = value;
+          });
+        }
+        localStorage.setItem(SCORE_KEY, JSON.stringify(merged));
+        return merged;
+      } catch (err) {
+        const fresh = defaultScores();
+        localStorage.setItem(SCORE_KEY, JSON.stringify(fresh));
+        return fresh;
+      }
+    }
+
+    function saveScores(scores) {
+      localStorage.setItem(SCORE_KEY, JSON.stringify(scores));
+    }
+
+    function selectedFaculty() {
+      return localStorage.getItem(FACULTY_KEY);
+    }
+
+    function loadActivity() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function pushActivity(entry) {
+      const list = loadActivity();
+      list.unshift(entry);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(list.slice(0, 12)));
+    }
+
+    function renderActivity() {
+      const list = loadActivity();
+      const mount = document.getElementById("activityList");
+      mount.innerHTML = "";
+      if (!list.length) {
+        mount.innerHTML = '<p class="empty-note">No verified drops yet. Complete a 3-frame scan to write the first +5 PTS event.</p>';
+        return;
+      }
+      list.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "activity-row";
+        row.innerHTML =
+          '<span class="activity-icon">♻</span><span><span class="activity-name">' +
+          item.label +
+          '</span><span class="activity-date">' +
+          item.when +
+          '</span></span><span class="activity-points">+5 PTS</span>';
+        mount.appendChild(row);
+      });
+    }
+
+    function renderLeaderboard() {
+      const scores = loadScores();
+      const mine = selectedFaculty();
+      const school = schoolById(mine);
+      const ranked = SCHOOLS.slice().sort((a, b) => scores[b.id] - scores[a.id]);
+      leaderboardEl.innerHTML = "";
+      ranked.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "board-row" + (item.id === mine ? " mine" : "");
+        row.innerHTML =
+          '<div class="rank">' + (index + 1) + "</div>" +
+          '<div class="avatar">' + item.id.slice(0, 2) + "</div>" +
+          '<div>' + item.id + '<span class="school-sub">' + item.short + "</span></div>" +
+          '<div class="rank-score">' + scores[item.id] + " PTS</div>";
+        leaderboardEl.appendChild(row);
+      });
+
+      const myScore = mine ? Number(scores[mine] || 0) : 0;
+      let campus = 0;
+      SCHOOLS.forEach((item) => { campus += Number(scores[item.id] || 0); });
+
+      facultyChip.textContent = mine ? ("SCHOOL: " + mine) : "SCHOOL: —";
+      userPointsEl.textContent = String(myScore);
+      document.getElementById("impactPoints").textContent = String(myScore);
+      document.getElementById("campusTotal").textContent = String(campus);
+      document.getElementById("impactTitle").textContent = school ? (school.short + " points") : "Faculty points";
+      document.getElementById("heroEyebrow").textContent = school
+        ? (school.id + " · sustainability mission")
+        : "ADA University · Smart Campus mission";
+
+      const sessionGain = mine ? Math.max(0, myScore - (school ? school.base : 0)) : 0;
+      const pct = Math.max(0, Math.min(100, (sessionGain / WEEKLY_TARGET) * 100));
+      document.getElementById("progressFill").style.width = pct + "%";
+      renderActivity();
+    }
+
+    function awardPoints() {
+      const mine = selectedFaculty();
+      if (!mine) return;
+      const scores = loadScores();
+      scores[mine] = Number(scores[mine] || 0) + window.REPULSE_CONFIG.POINTS_PER_SUCCESS;
+      saveScores(scores);
+      localStorage.setItem("repulse_score_" + mine, String(scores[mine]));
+      const when = new Date();
+      pushActivity({
+        label: "Verified drop · " + mine,
+        when: when.toLocaleString()
+      });
+      renderLeaderboard();
+    }
+
+    function renderWelcome() {
+      const grid = document.getElementById("schoolGrid");
+      grid.innerHTML = "";
+      SCHOOLS.forEach((school) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "school-btn";
+        btn.innerHTML = "<strong>" + school.id + "</strong><span>" + school.name + " · Base " + school.base + " pts</span>";
+        btn.addEventListener("click", () => {
+          localStorage.setItem(FACULTY_KEY, school.id);
+          document.getElementById("welcomeOverlay").classList.remove("show");
+          logTelemetry("FACULTY_LOCK", school.id);
+          renderLeaderboard();
+        });
+        grid.appendChild(btn);
+      });
+      document.getElementById("welcomeOverlay").classList.add("show");
+    }
+
+    function setStatus(text, kind) {
+      statusLine.textContent = text;
+      statusLine.className = "status" + (kind ? " " + kind : "");
+    }
+
+    function setScanUi(stateLabel, chipLabel) {
+      document.getElementById("scanState").textContent = stateLabel;
+      document.getElementById("cameraChip").textContent = chipLabel;
+    }
+
+    function clearCaptureTimers() {
+      captureTimers.forEach((id) => window.clearTimeout(id));
+      captureTimers = [];
+    }
+
+    function stopCamera() {
+      clearCaptureTimers();
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+      video.srcObject = null;
+      scanOverlay.classList.remove("active");
+      capturing = false;
+      document.getElementById("stageMessage").classList.remove("hide");
+      setScanUi("ready to scan", "camera ready");
+    }
+
+    function resetRecordButton() {
+      recordBtn.disabled = false;
+      recordBtn.className = "cta";
+      recordBtn.textContent = "Start Video Recording 📹";
+    }
+
+    function armProcessingButton() {
+      processing = true;
+      recordBtn.disabled = true;
+      recordBtn.className = "cta busy";
+      recordBtn.textContent = "AI Processing Video... 🧠";
+      scanOverlay.classList.remove("active");
+      setScanUi("ai processing", "analyzing");
+    }
+
+    // Grabs the current video frame onto a hidden 640x640 canvas and returns
+    // it as a JPEG data URI. YOLOv8's own preprocessing resizes/letterboxes
+    // to its training resolution regardless, but capturing square at 640x640
+    // here keeps the upload small and matches the model's native input size.
+    // Note: this squashes non-square video slightly rather than letterboxing;
+    // acceptable for a presentation build, but letterbox client-side first if
+    // you need pixel-perfect aspect ratio for a fine-tuned model.
+    function snapshotFrame() {
+      const size = 640;
+      canvas.width = size;
+      canvas.height = size;
+      ctx.drawImage(video, 0, 0, size, size);
+      return canvas.toDataURL("image/jpeg", 0.86);
+    }
+
+    // POSTs the 3 captured base64 frames to FastAPI, which decodes them with
+    // OpenCV and runs the in-RAM YOLOv8 model to return the verdict.
+    // Success -> green alert with the material, +5 PTS, leaderboard re-sort.
+    // Fraud   -> 6-second red warning, no points.
+    async function sendFrames(frameList) {
+      armProcessingButton();
+      setStatus("Analyzing 3 frames…");
+      logTelemetry("UPLOAD", "POST " + window.REPULSE_CONFIG.DETECT_URL + " · 3 frames");
+      try {
+        const response = await fetch(window.REPULSE_CONFIG.DETECT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            frames: frameList,
+            smart_lock_url: window.REPULSE_CONFIG.SMART_LOCK_URL
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setStatus(payload && payload.detail ? String(payload.detail) : "Server rejected the scan.", "bad");
+          logTelemetry("SERVER_REJECT", String((payload && payload.detail) || response.status));
+        } else if (payload && payload.status === "success") {
+          const rawMaterial = typeof payload.detected_material === "string" ? payload.detected_material.trim() : "";
+          const material = rawMaterial || "Recyclable";
+          hideFraudAlert();
+          showSuccessAlert(material);
+          awardPoints();
+          setStatus("Verified drop. +5 PTS awarded to " + selectedFaculty() + ".", "ok");
+          logTelemetry("SUCCESS", material + " · +5 PTS · leaderboard updated");
+        } else {
+          hideSuccessAlert();
+          setStatus((payload && payload.message) ? String(payload.message) : "Waste item not detected.", "bad");
+          logTelemetry("NO_WASTE", (payload && payload.message) ? String(payload.message) : "backend returned fraud");
+          showFraudAlert();
+        }
+      } catch (err) {
+        setStatus("Could not reach the RePulse API. Is the backend running?", "bad");
+        logTelemetry("NET_FAIL", "backend unreachable");
+      }
+      resetRecordButton();
+      processing = false;
+    }
+
+    async function finishCapture() {
+      if (finishing) return;
+      finishing = true;
+      stopCamera();
+      if (frames.length !== window.REPULSE_CONFIG.REQUIRED_FRAMES) {
+        setStatus("Capture aborted: need exactly 3 frames.", "bad");
+        logTelemetry("ABORT", "frame count " + frames.length);
+        resetRecordButton();
+        finishing = false;
+        return;
+      }
+      await sendFrames(frames.slice());
+      finishing = false;
+    }
+
+    // Three snapshots exactly 1000ms apart inside a 3.2s window
+    // (t+1200ms, t+2200ms, t+3200ms). The third one ends the scan.
+    function scheduleFrameCaptures() {
+      frames = [];
+      const startDelay = window.REPULSE_CONFIG.START_DELAY_MS;
+      const gap = window.REPULSE_CONFIG.FRAME_GAP_MS;
+      for (let i = 0; i < window.REPULSE_CONFIG.REQUIRED_FRAMES; i += 1) {
+        const delay = startDelay + i * gap;
+        const timer = window.setTimeout(() => {
+          frames.push(snapshotFrame());
+          setStatus("Captured frame " + frames.length + " / 3 (t+" + delay + "ms of 3.2s)");
+          logTelemetry("FRAME_" + frames.length, "t+" + delay + "ms");
+          if (frames.length === window.REPULSE_CONFIG.REQUIRED_FRAMES) {
+            finishCapture();
+          }
+        }, delay);
+        captureTimers.push(timer);
+      }
+    }
+
+    async function startRecording() {
+      if (processing) return;
+      checkBanStatus();
+      hideFraudAlert();
+      hideSuccessAlert();
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+      } catch (err) {
+        setStatus("Camera permission denied or unavailable.", "bad");
+        logTelemetry("CAM_FAIL", "permission or device error");
+        return;
+      }
+      video.setAttribute("playsinline", "");
+      video.setAttribute("muted", "");
+      video.setAttribute("autoplay", "");
+      video.playsInline = true;
+      video.muted = true;
+      video.autoplay = true;
+      video.srcObject = mediaStream;
+      await video.play().catch(() => undefined);
+      capturing = true;
+      document.getElementById("stageMessage").classList.add("hide");
+      scanOverlay.classList.add("active");
+      recordBtn.className = "cta stop";
+      recordBtn.textContent = "Stop & Analyze Video 🔴";
+      setScanUi("recording", "live");
+      setStatus("Recording for 3.2s. Move the item into the bin and keep the camera steady.");
+      logTelemetry("CAMERA_ARM", "facingMode=environment · 3.2s window · 3 frames @ 1s");
+      scheduleFrameCaptures();
+    }
+
+    // "Stop & Analyze Video 🔴": fill any frames not yet captured right now,
+    // then package all 3 base64 snapshots and POST them to the backend.
+    async function stopAndAnalyzeEarly() {
+      if (!capturing) return;
+      clearCaptureTimers();
+      while (frames.length < window.REPULSE_CONFIG.REQUIRED_FRAMES) {
+        frames.push(snapshotFrame());
+        logTelemetry("FRAME_" + frames.length, "early stop snapshot");
+      }
+      await finishCapture();
+    }
+
+    recordBtn.addEventListener("click", () => {
+      if (processing) return;
+      if (capturing) {
+        stopAndAnalyzeEarly();
+        return;
+      }
+      startRecording();
+    });
+
+    function boot() {
+      logTelemetry("BOOT", "RePulse Smart Campus online");
+      checkBanStatus();
+      if (!selectedFaculty()) {
+        renderWelcome();
+      }
+      renderLeaderboard();
+    }
+
+    boot();
+  </script>
+</body>
+</html>
