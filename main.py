@@ -25,7 +25,6 @@ except Exception:
     pass
 # ==============================================================================
 
-import asyncio
 import base64
 import ipaddress
 import logging
@@ -51,14 +50,14 @@ SUCCESS_POINTS = 5
 DEFAULT_SMART_LOCK_URL = "http://192.168.4"
 SMART_LOCK_TIMEOUT_SECONDS = 1.2
 
-# Сверхчувствительный сбалансированный порог для хакатона
-CONFIDENCE_THRESHOLD = 0.05 
+# Проверенный дневной порог уверенности ИИ
+CONFIDENCE_THRESHOLD = 0.15 
 YOLO_WEIGHTS = "yolov8n.pt"
 
 # Проверенные целевые ИИ-классы модели YOLOv8
 PLASTIC_LABELS = {"bottle"}
-METAL_LABELS = {"cup"}  # Алюминиевые банки Cola/Fanta ИИ видит как cup
-PAPER_LABELS = {"box", "cardboard", "paper", "book"}  # book ловит любую бумагу и тетради
+METAL_LABELS = {"cup"}
+PAPER_LABELS = {"box", "cardboard", "paper", "book"}
 
 REQUIRED_FRAME_COUNT = 3
 
@@ -74,7 +73,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="35.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="37.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -92,8 +91,8 @@ def strip_data_uri(payload: Any) -> str:
         raw = payload if isinstance(payload, str) else str(payload)
         raw = raw.strip()
         if "," in raw:
-            # ИСПРАВЛЕНО: сначала извлекаем элемент по индексу, а уже у НЕГО вызываем .strip()!
-            return raw.split(",", 1)[1].strip()
+            parts = raw.split(",", 1)
+            return parts[1].strip()
         return raw
     except Exception:
         return ""
@@ -118,56 +117,57 @@ def decode_and_resize_frame(payload: Any) -> Optional[np.ndarray]:
         return None
 
 
-def map_material(label: str) -> Optional[str]:
-    text = (label or "").strip().lower()
-    if text in PLASTIC_LABELS:
-        return "Plastic"
-    if text in METAL_LABELS:
-        return "Metal"
-    if text in PAPER_LABELS:
-        return "Paper / Cardboard"
-    return None
-
-
-def run_yolo_sync(frame: np.ndarray) -> list[str]:
-    """Синхронный запуск инференса, изолированный в отдельный поток, чтобы не вешать сервер."""
+def run_yolo_on_frame(frame: np.ndarray) -> list[tuple[str, float]]:
+    """Возвращает список кортежей (название класса, площадь бокса)."""
     if model is None:
-        raise RuntimeError("YOLO model is not loaded")
+        return []
     
     results = model.predict(source=frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
-    labels: list[str] = []
+    detections: list[tuple[str, float]] = []
     
     if not results or len(results) == 0:
-        return labels
+        return detections
         
     boxes = results[0].boxes
-    if boxes is None or boxes.cls is None:
-        return labels
+    if boxes is None or boxes.cls is None or boxes.xywhn is None:
+        return detections
         
-    for cls_tensor in boxes.cls:
-        cls_index = int(cls_tensor.item())
-        label = model.names.get(cls_index, str(cls_index)) if isinstance(model.names, dict) else str(cls_index)
-        labels.append(str(label).strip().lower())
-    return labels
-
-
-async def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Асинхронный каскадный анализ кадров через фоновые воркеры ноутбука/Render."""
-    for index, frame in enumerate(frames, start=1):
-        if frame is None:
-            continue
+    for i in range(len(boxes)):
         try:
-            # Запускаем ИИ в фоновом потоке asyncio, полностью защищая от зависания сети
-            labels = await asyncio.to_thread(run_yolo_sync, frame)
-            logger.info(f"YOLO Frame {index} Detections: {labels}")
-            for label in labels:
-                material = map_material(label)
-                if material:
-                    return {"found": True, "material": material, "frame": index}
-        except Exception as exc:
-            logger.warning(f"YOLO frame {index} skipped due to thread error: {exc}")
-            continue
+            class_id = int(boxes.cls[i].item())
+            label = model.names.get(class_id, str(class_id)).strip().lower()
             
+            # Считаем относительную площадь рамки объекта
+            xywhn = boxes.xywhn[i].tolist()
+            w = float(xywhn[2])
+            h = float(xywhn[3])
+            box_area = w * h
+            
+            detections.append((label, box_area))
+        except Exception:
+            continue
+    return detections
+
+
+def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
+    """Тот самый проверенный дневной каскад с точечным фиксом ложного металла."""
+    for index, frame in enumerate(frames, start=1):
+        detections = run_yolo_on_frame(frame)
+        logger.info(f"YOLO Frame {index} Detections: {detections}")
+        
+        for label, box_area in detections:
+            # 1. Если ИИ галлюцинирует cup (металл) на крупном комке бумаги в руке (>5% экрана)
+            if label == "cup" and box_area > 0.05:
+                return {"found": True, "material": "Paper / Cardboard", "frame": index}
+                
+            # 2. Стандартный чистый маппинг
+            if label in PLASTIC_LABELS:
+                return {"found": True, "material": "Plastic", "frame": index}
+            if label in METAL_LABELS:
+                return {"found": True, "material": "Metal", "frame": index}
+            if label in PAPER_LABELS:
+                return {"found": True, "material": "Paper / Cardboard", "frame": index}
+                
     return {"found": False, "material": None, "frame": None}
 
 
@@ -221,7 +221,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Targeted Core Pure v35.0",
+        "engine": "YOLOv8 Targeted Core Pure v37.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
@@ -258,7 +258,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
         }
 
     try:
-        outcome = await analyse_frames(frames)
+        outcome = analyse_frames(frames)
     except Exception as exc:
         logger.error(f"🚨 КРИТИЧЕСКАЯ ОШИБКА КОДА ИИ: {type(exc).__name__}: {exc}")
         return {
@@ -267,7 +267,6 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
             "message": "RePulse AI: Internal pipeline processing exception.",
         }
 
-    # Честный FRAUD (отсечение пустого стола или пола)
     if not outcome["found"]:
         return {
             "status": "fraud",
@@ -275,7 +274,6 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
             "message": "RePulse AI: No valid recyclable waste items detected.",
         }
 
-    # Включение смарт-замка в безопасном фоновом потоке
     background_tasks.add_task(trigger_smart_lock, lock_url)
 
     return {
