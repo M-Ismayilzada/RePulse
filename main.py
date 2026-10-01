@@ -42,39 +42,36 @@ async def lifespan(app: FastAPI):
     global model
     logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
     
-    # ЖЕСТКИЙ MONKEY PATCH ДЛЯ PyTorch 2.6+: Полностью отключаем weights_only на уровне ядра torch
+    # ОФИЦИАЛЬНЫЙ ФИКС СЕКЬЮРИТИ PYTORCH 2.6+: Вносим модули YOLOv8 в белый список
     try:
         import torch
-        # Хак: заставляем PyTorch думать, что weights_only всегда равен False, независимо от того, кто его вызывает
-        orig_load = torch.load
-        def bulletproof_load(*args, **kwargs):
-            if 'weights_only' in kwargs:
-                kwargs['weights_only'] = False
-            else:
-                kwargs['weights_only'] = False
-            return orig_load(*args, **kwargs)
-        torch.load = bulletproof_load
+        from ultralytics.nn.tasks import DetectionModel
+        from ultralytics.nn.modules.conv import Conv, Conv2d
+        from ultralytics.nn.modules.block import C2f, Bottleneck, DFL
+        from ultralytics.nn.modules.head import Detect
         
-        # Дублирующий фикс для внутренних методов десериализации
-        import torch.serialization
-        if hasattr(torch.serialization, '_load'):
-            orig_inner_load = torch.serialization._load
-            def bulletproof_inner_load(*args, **kwargs):
-                if 'weights_only' in kwargs:
-                    kwargs['weights_only'] = False
-                return orig_inner_load(*args, **kwargs)
-            torch.serialization._load = bulletproof_inner_load
-            
-        logger.info("PyTorch 2.6+ strict unpickler core successfully bypassed via patch.")
+        # Передаем весь список внутренних классов, на которые ругался Render
+        with torch.serialization.safe_globals([
+            DetectionModel, Conv, Conv2d, C2f, Bottleneck, DFL, Detect,
+            torch.nn.modules.container.Sequential,
+            torch.nn.modules.container.ModuleList,
+            torch.nn.modules.activation.SiLU,
+            torch.nn.modules.pooling.MaxPool2d,
+            torch.Size,
+            dict
+        ]):
+            model = YOLO(YOLO_WEIGHTS)
+        logger.info("PyTorch 2.6+ unpickler allowlisted successfully.")
     except Exception as exc:
-        logger.warning(f"Could not apply strict core bypass patch: {exc}")
-
-    model = YOLO(YOLO_WEIGHTS)
+        logger.warning(f"Could not apply native global context: {exc}")
+        # Запасной вариант инициализации
+        model = YOLO(YOLO_WEIGHTS)
+        
     yield
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="27.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="28.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -92,7 +89,7 @@ def strip_data_uri(payload: Any) -> str:
         raw = payload if isinstance(payload, str) else str(payload)
         raw = raw.strip()
         if "," in raw:
-            return raw.split(",", 1).strip()
+            return raw.split(",", 1)[1].strip()
         return raw
     except Exception:
         return ""
@@ -127,7 +124,7 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[dict[str, Any]]:
     if not results or len(results) == 0:
         return detections
         
-    boxes = results.boxes
+    boxes = results[0].boxes
     if boxes is None or boxes.cls is None or boxes.xywhn is None:
         return detections
         
@@ -137,8 +134,8 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[dict[str, Any]]:
             label = model.names.get(class_id, str(class_id)).strip().lower()
             
             xywhn = boxes.xywhn[i].tolist()
-            w = xywhn
-            h = xywhn
+            w = xywhn[2]
+            h = xywhn[3]
             box_area = w * h
             
             detections.append({"label": label, "area": box_area})
@@ -157,7 +154,6 @@ def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
         all_detections.extend(detections)
         
     # ШАГ 1: ЧЕСТНЫЙ ИИ-ПОИСК БУТЫЛОК И БАНОК (Приоритет №1)
-    # Если ИИ нашел бутылку Fuse Tea — это ВСЕГДА Plastic, плевать на её размер в кадре!
     for obj in all_detections:
         if obj["label"] == "bottle":
             return {"found": True, "material": "Plastic"}
@@ -165,7 +161,7 @@ def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
             return {"found": True, "material": "Metal"}
 
     # ШАГ 2: БУМАЖНЫЙ ФИЛЬТР (Приоритет №2)
-    # Ловит скомканную бумагу по большой площади, если бутылок в кадре нет!
+    # Включается только если бутылок нет. Спасает мятую бумагу по площади!
     for obj in all_detections:
         if obj["area"] > 0.06:
             return {"found": True, "material": "Paper / Cardboard"}
@@ -225,7 +221,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Cascading Filter Core v27.0",
+        "engine": "YOLOv8 Cascading Filter Core v28.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
