@@ -15,7 +15,7 @@ WORKDIR /app
 
 # --- Python dependencies -----------------------------------------------------
 COPY requirements.txt .
-# --extra-index-url pulls CPU-only torch/torchvision wheels (Lightweight version)
+# --extra-index-url pulls CPU-only torch wheels to bypass 512MB RAM limits
 RUN pip install --no-cache-dir -r requirements.txt \
     --extra-index-url https://pytorch.org
 
@@ -27,6 +27,7 @@ ENV YOLO_CONF=0.15
 # --- Application code ---------------------------------------------------------
 COPY . .
 
-EXPOSE 8080
+# Привязываем к стандартному порту Render
+EXPOSE 10000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
