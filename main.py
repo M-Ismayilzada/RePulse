@@ -41,34 +41,13 @@ model: Optional[YOLO] = None
 async def lifespan(app: FastAPI):
     global model
     logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
-    
-    # ФИКС СЕКЬЮРИТИ PYTORCH 2.6+: Регистрируем классы Ultralytics в безопасный контекст
-    try:
-        import torch
-        from ultralytics.nn.tasks import DetectionModel
-        from ultralytics.nn.modules.conv import Conv
-        from ultralytics.nn.modules.block import C2f, Bottleneck
-        from ultralytics.nn.modules.head import Detect
-        
-        torch.serialization.add_safe_globals([
-            DetectionModel, Conv, C2f, Bottleneck, Detect,
-            torch.nn.modules.container.Sequential,
-            torch.nn.modules.container.ModuleList,
-            torch.nn.modules.activation.SiLU,
-            torch.nn.modules.pooling.MaxPool2d,
-            torch.Size,
-            dict
-        ])
-        logger.info("PyTorch 2.6+ strict unpickler configurations allowlisted successfully.")
-    except Exception as exc:
-        logger.warning(f"Could not apply PyTorch safe globals context: {exc}")
-
+    # Веса успешно загрузятся благодаря переменной окружения в Dockerfile
     model = YOLO(YOLO_WEIGHTS)
     yield
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="25.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="26.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -151,7 +130,7 @@ def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
         all_detections.extend(detections)
         
     # ШАГ 1: ЧЕСТНЫЙ ИИ-ПОИСК БУТЫЛОК И БАНОК (Приоритет №1)
-    # Если ИИ нашел бутылку Fuse Tea — это ВСЕГДА Plastic, плевать на её гигантский размер в кадре!
+    # Бутылка Fuse Tea — это ВСЕГДА Plastic, независимо от её размера в кадре!
     for obj in all_detections:
         if obj["label"] == "bottle":
             return {"found": True, "material": "Plastic"}
@@ -159,7 +138,7 @@ def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
             return {"found": True, "material": "Metal"}
 
     # ШАГ 2: БУМАЖНЫЙ ФИЛЬТР (Приоритет №2)
-    # Включается только если бутылок в кадре нет. Ловит скомканную бумагу по большой площади!
+    # Ловит скомканную бумагу по большой площади, если бутылок в кадре нет!
     for obj in all_detections:
         if obj["area"] > 0.06:
             return {"found": True, "material": "Paper / Cardboard"}
@@ -219,7 +198,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Cascading Filter Core v25.0",
+        "engine": "YOLOv8 Cascading Filter Core v26.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
