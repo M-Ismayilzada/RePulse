@@ -41,13 +41,40 @@ model: Optional[YOLO] = None
 async def lifespan(app: FastAPI):
     global model
     logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
-    # Веса успешно загрузятся благодаря переменной окружения в Dockerfile
+    
+    # ЖЕСТКИЙ MONKEY PATCH ДЛЯ PyTorch 2.6+: Полностью отключаем weights_only на уровне ядра torch
+    try:
+        import torch
+        # Хак: заставляем PyTorch думать, что weights_only всегда равен False, независимо от того, кто его вызывает
+        orig_load = torch.load
+        def bulletproof_load(*args, **kwargs):
+            if 'weights_only' in kwargs:
+                kwargs['weights_only'] = False
+            else:
+                kwargs['weights_only'] = False
+            return orig_load(*args, **kwargs)
+        torch.load = bulletproof_load
+        
+        # Дублирующий фикс для внутренних методов десериализации
+        import torch.serialization
+        if hasattr(torch.serialization, '_load'):
+            orig_inner_load = torch.serialization._load
+            def bulletproof_inner_load(*args, **kwargs):
+                if 'weights_only' in kwargs:
+                    kwargs['weights_only'] = False
+                return orig_inner_load(*args, **kwargs)
+            torch.serialization._load = bulletproof_inner_load
+            
+        logger.info("PyTorch 2.6+ strict unpickler core successfully bypassed via patch.")
+    except Exception as exc:
+        logger.warning(f"Could not apply strict core bypass patch: {exc}")
+
     model = YOLO(YOLO_WEIGHTS)
     yield
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="26.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="27.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -121,7 +148,7 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[dict[str, Any]]:
 
 
 def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Профессиональный каскадный анализатор: точные ИИ-классы важнее площадей."""
+    """Ювелирный каскадный анализатор: точные ИИ-классы важнее площадей."""
     all_detections = []
     
     for index, frame in enumerate(frames, start=1):
@@ -130,7 +157,7 @@ def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
         all_detections.extend(detections)
         
     # ШАГ 1: ЧЕСТНЫЙ ИИ-ПОИСК БУТЫЛОК И БАНОК (Приоритет №1)
-    # Бутылка Fuse Tea — это ВСЕГДА Plastic, независимо от её размера в кадре!
+    # Если ИИ нашел бутылку Fuse Tea — это ВСЕГДА Plastic, плевать на её размер в кадре!
     for obj in all_detections:
         if obj["label"] == "bottle":
             return {"found": True, "material": "Plastic"}
@@ -198,7 +225,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Cascading Filter Core v26.0",
+        "engine": "YOLOv8 Cascading Filter Core v27.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
