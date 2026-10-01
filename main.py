@@ -1,4 +1,4 @@
-"""RePulse Smart Campus — Final Pure YOLOv8 Targeted Production Backend Core."""
+"""RePulse Smart Campus — Clean Production YOLOv8 Targeted Backend Core for Render."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ DEFAULT_SMART_LOCK_URL = "http://192.168.4"
 FALLBACK_MATERIAL = "Recyclable (Buffer)"
 SMART_LOCK_TIMEOUT_SECONDS = 1.2
 
-# Порог уверенности ИИ. Оптимально 0.10, чтобы ловить объекты без сбоев
+# Оптимально сбалансированный порог уверенности для хакатона
 CONFIDENCE_THRESHOLD = 0.10 
 YOLO_WEIGHTS = "yolov8n.pt"
 
@@ -40,22 +40,15 @@ model: Optional[YOLO] = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model
-    logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM...")
+    logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
     
-    # УЛЬТИМАТИВНЫЙ ФИКС СЕКЬЮРИТИ PYTORCH 2.6+: Обходим strict unpickler для встроенных весов
+    # БЕЗОПАСНЫЙ ИНЖЕНЕРНЫЙ ПАТЧ ДЛЯ PyTorch 2.6+: Отключаем weights_only специально для доверенного файла весов
     try:
         import torch
-        import ultralytics
-        
-        # Переопределяем метод загрузки, отключая принудительный weights_only=True для доверенного локального файла
         original_load = torch.load
         def safe_torch_load(*args, **kwargs):
-            if 'weights_only' in kwargs:
-                kwargs['weights_only'] = False
-            else:
-                kwargs['weights_only'] = False
+            kwargs['weights_only'] = False
             return original_load(*args, **kwargs)
-            
         torch.load = safe_torch_load
         logger.info("PyTorch 2.6+ strict unpickler bypassed successfully.")
     except Exception as exc:
@@ -66,7 +59,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="21.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="21.5.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -102,7 +95,7 @@ def decode_and_resize_frame(payload: Any) -> Optional[np.ndarray]:
         np_arr = np.frombuffer(raw_bytes, dtype=np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if frame is not None:
-            # Сжимаем кадр до 320x320 для молниеносной обработки на CPU Render
+            # Сжимаем матрицу до 320x320 пикселей, чтобы уложиться в 512 МБ памяти Render
             return cv2.resize(frame, (320, 320), interpolation=cv2.INTER_AREA)
         return None
     except Exception as exc:
@@ -114,14 +107,13 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[str]:
     if model is None:
         return []
     
-    # Инференс возвращает СПИСОК результатов (list)
     results = model.predict(source=frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
     labels: list[str] = []
     
     if not results or len(results) == 0:
         return labels
         
-    # Достаем boxes строго из первого элемента результатов
+    # Извлекаем boxes строго из первого элемента возвращаемого списка результатов
     boxes = results[0].boxes
     if boxes is None or boxes.cls is None:
         return labels
@@ -134,22 +126,20 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[str]:
 
 
 def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Ювелирный анализ кадров через локальную нейросеть YOLOv8."""
+    """Многоканальный анализ кадров через локальную нейросеть YOLOv8."""
     all_detections = []
     for index, frame in enumerate(frames, start=1):
         labels = run_yolo_on_frame(frame)
         logger.info(f"YOLO Frame {index} Detections: {labels}")
         all_detections.extend(labels)
         
-    # ПРИОРИТЕТ 1: Если ИИ нашел бутылку в любой момент времени — это строго ПЛАСТИК
+    # Каскадная логика распределения материалов
     if "bottle" in all_detections:
         return {"found": True, "material": "Plastic"}
         
-    # ПРИОРИТЕТ 2: Если ИИ нашел cup (алюминиевые банки Cola) — это строго МЕТАЛЛ
     if "cup" in all_detections:
         return {"found": True, "material": "Metal"}
         
-    # ПРИОРИТЕТ 3: Если бутылок нет, но ИИ зацепил коробку или книгу — это БУМАГА
     if "box" in all_detections or "book" in all_detections:
         return {"found": True, "material": "Paper / Cardboard"}
                 
@@ -206,7 +196,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Targeted Core Pure v21.0",
+        "engine": "YOLOv8 Targeted Core Pure v21.5",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
@@ -246,7 +236,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
         background_tasks.add_task(trigger_smart_lock, lock_url)
         return {"status": "success", "points": SUCCESS_POINTS, "detected_material": FALLBACK_MATERIAL}
 
-    # Если ИИ не нашел целевой мусор — это ЧЕСТНЫЙ FRAUD (блокируем начисление очков)
+    # Честный FRAUD (отсечение пустого стола или пола)
     if not outcome["found"]:
         return {
             "status": "fraud",
@@ -254,7 +244,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
             "message": "RePulse AI: No valid recyclable waste items detected.",
         }
 
-    # Безопасное фоновое открытие замка, изолированное от состояния ноутбука
+    # Фоновое открытие замка, изолированное от состояния сети
     try:
         background_tasks.add_task(trigger_smart_lock, lock_url)
     except Exception:
