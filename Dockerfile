@@ -20,6 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt \
     --extra-index-url https://pytorch.org
 
 # --- Production Environment Tuning -------------------------------------------
+# ЖЕЛЕЗОБЕТОННЫЙ ФИКС СЕКЬЮРИТИ PYTORCH 2.6+: Глобально отключаем weights_only в Linux
+ENV TORCH_FORCE_WEIGHTS_ONLY_LOAD=0
 ENV TORCH_THREADS=1
 ENV YOLO_IMGSZ=320
 ENV YOLO_CONF=0.15
