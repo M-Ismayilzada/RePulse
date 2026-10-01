@@ -28,7 +28,7 @@ DEFAULT_SMART_LOCK_URL = "http://192.168.4"
 FALLBACK_MATERIAL = "Recyclable (Buffer)"
 SMART_LOCK_TIMEOUT_SECONDS = 1.2
 
-# Оптимально сбалансированный порог уверенности для хакатона
+# Идеально сбалансированный порог уверенности для хакатона
 CONFIDENCE_THRESHOLD = 0.10 
 YOLO_WEIGHTS = "yolov8n.pt"
 
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="21.5.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="22.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -133,7 +133,7 @@ def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
         logger.info(f"YOLO Frame {index} Detections: {labels}")
         all_detections.extend(labels)
         
-    # Каскадная логика распределения материалов
+    # Каскадная логика распределения материалов по классам COCO
     if "bottle" in all_detections:
         return {"found": True, "material": "Plastic"}
         
@@ -196,7 +196,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Targeted Core Pure v21.5",
+        "engine": "YOLOv8 Targeted Core Pure v22.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
@@ -244,7 +244,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
             "message": "RePulse AI: No valid recyclable waste items detected.",
         }
 
-    # Фоновое открытие замка, изолированное от состояния сети
+    # Безопасное фоновое открытие замка, изолированное от состояния сети
     try:
         background_tasks.add_task(trigger_smart_lock, lock_url)
     except Exception:
