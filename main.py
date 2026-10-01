@@ -8,7 +8,6 @@ from __future__ import annotations
 # ==============================================================================
 try:
     import torch
-    # Жестко заставляем PyTorch всегда загружать файлы в режиме weights_only=False
     orig_load = torch.load
     def bulletproof_load(*args, **kwargs):
         kwargs['weights_only'] = False
@@ -26,6 +25,7 @@ except Exception:
     pass
 # ==============================================================================
 
+import asyncio
 import base64
 import ipaddress
 import logging
@@ -51,8 +51,8 @@ SUCCESS_POINTS = 5
 DEFAULT_SMART_LOCK_URL = "http://192.168.4"
 SMART_LOCK_TIMEOUT_SECONDS = 1.2
 
-# Проверенный дневной порог уверенности
-CONFIDENCE_THRESHOLD = 0.15 
+# Сверхчувствительный сбалансированный порог для хакатона
+CONFIDENCE_THRESHOLD = 0.05 
 YOLO_WEIGHTS = "yolov8n.pt"
 
 # Проверенные целевые ИИ-классы модели YOLOv8
@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="32.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="35.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -92,7 +92,8 @@ def strip_data_uri(payload: Any) -> str:
         raw = payload if isinstance(payload, str) else str(payload)
         raw = raw.strip()
         if "," in raw:
-            return raw.split(",", 1).strip()
+            # ИСПРАВЛЕНО: сначала извлекаем элемент по индексу, а уже у НЕГО вызываем .strip()!
+            return raw.split(",", 1)[1].strip()
         return raw
     except Exception:
         return ""
@@ -110,7 +111,6 @@ def decode_and_resize_frame(payload: Any) -> Optional[np.ndarray]:
         np_arr = np.frombuffer(raw_bytes, dtype=np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if frame is not None:
-            # Сжимаем кадр до 320x320 для мгновенной обработки на CPU Render без лагов
             return cv2.resize(frame, (320, 320), interpolation=cv2.INTER_AREA)
         return None
     except Exception as exc:
@@ -129,7 +129,8 @@ def map_material(label: str) -> Optional[str]:
     return None
 
 
-def run_yolo_on_frame(frame: np.ndarray) -> list[str]:
+def run_yolo_sync(frame: np.ndarray) -> list[str]:
+    """Синхронный запуск инференса, изолированный в отдельный поток, чтобы не вешать сервер."""
     if model is None:
         raise RuntimeError("YOLO model is not loaded")
     
@@ -139,8 +140,7 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[str]:
     if not results or len(results) == 0:
         return labels
         
-    # КРИСТАЛЬНО ЧИСТЫЙ СИНТАКСИС ДЛЯ ИЗВЛЕЧЕНИЯ BOXES БЕЗ ОШИБОК
-    boxes = results.boxes
+    boxes = results[0].boxes
     if boxes is None or boxes.cls is None:
         return labels
         
@@ -151,15 +151,23 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[str]:
     return labels
 
 
-def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Проверенный дневной каскад анализа кадров: быстро, четко, без багов."""
+async def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
+    """Асинхронный каскадный анализ кадров через фоновые воркеры ноутбука/Render."""
     for index, frame in enumerate(frames, start=1):
-        labels = run_yolo_on_frame(frame)
-        logger.info(f"YOLO Frame {index} Detections: {labels}")
-        for label in labels:
-            material = map_material(label)
-            if material:
-                return {"found": True, "material": material, "frame": index}
+        if frame is None:
+            continue
+        try:
+            # Запускаем ИИ в фоновом потоке asyncio, полностью защищая от зависания сети
+            labels = await asyncio.to_thread(run_yolo_sync, frame)
+            logger.info(f"YOLO Frame {index} Detections: {labels}")
+            for label in labels:
+                material = map_material(label)
+                if material:
+                    return {"found": True, "material": material, "frame": index}
+        except Exception as exc:
+            logger.warning(f"YOLO frame {index} skipped due to thread error: {exc}")
+            continue
+            
     return {"found": False, "material": None, "frame": None}
 
 
@@ -213,7 +221,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Targeted Core Pure v32.0",
+        "engine": "YOLOv8 Targeted Core Pure v35.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
@@ -250,7 +258,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
         }
 
     try:
-        outcome = analyse_frames(frames)
+        outcome = await analyse_frames(frames)
     except Exception as exc:
         logger.error(f"🚨 КРИТИЧЕСКАЯ ОШИБКА КОДА ИИ: {type(exc).__name__}: {exc}")
         return {
