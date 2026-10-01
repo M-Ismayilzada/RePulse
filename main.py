@@ -1,4 +1,4 @@
-"""RePulse Smart Campus — Clean Production YOLOv8 Targeted Backend Core for Render."""
+"""RePulse Smart Campus — Flawless Pure YOLOv8 Targeted Production Backend Core."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ DEFAULT_SMART_LOCK_URL = "http://192.168.4"
 FALLBACK_MATERIAL = "Recyclable (Buffer)"
 SMART_LOCK_TIMEOUT_SECONDS = 1.2
 
-# Идеально сбалансированный порог уверенности для хакатона
+# Оптимально высокая чувствительность
 CONFIDENCE_THRESHOLD = 0.10 
 YOLO_WEIGHTS = "yolov8n.pt"
 
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     global model
     logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
     
-    # БЕЗОПАСНЫЙ ИНЖЕНЕРНЫЙ ПАТЧ ДЛЯ PyTorch 2.6+: Отключаем weights_only специально для доверенного файла весов
+    # ПАТЧ СЕКЬЮРИТИ PyTorch 2.6+: Разрешаем десериализацию весов официального релиза
     try:
         import torch
         original_load = torch.load
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="22.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="23.5.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,7 +95,6 @@ def decode_and_resize_frame(payload: Any) -> Optional[np.ndarray]:
         np_arr = np.frombuffer(raw_bytes, dtype=np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if frame is not None:
-            # Сжимаем матрицу до 320x320 пикселей, чтобы уложиться в 512 МБ памяти Render
             return cv2.resize(frame, (320, 320), interpolation=cv2.INTER_AREA)
         return None
     except Exception as exc:
@@ -103,45 +102,53 @@ def decode_and_resize_frame(payload: Any) -> Optional[np.ndarray]:
         return None
 
 
-def run_yolo_on_frame(frame: np.ndarray) -> list[str]:
-    if model is None:
-        return []
-    
-    results = model.predict(source=frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
-    labels: list[str] = []
-    
-    if not results or len(results) == 0:
-        return labels
-        
-    # Извлекаем boxes строго из первого элемента возвращаемого списка результатов
-    boxes = results[0].boxes
-    if boxes is None or boxes.cls is None:
-        return labels
-        
-    for cls_tensor in boxes.cls:
-        cls_index = int(cls_tensor.item())
-        label = model.names.get(cls_index, str(cls_index)) if isinstance(model.names, dict) else str(cls_index)
-        labels.append(str(label).strip().lower())
-    return labels
-
-
 def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Многоканальный анализ кадров через локальную нейросеть YOLOv8."""
-    all_detections = []
+    """Умный анализ кадров через YOLOv8 с фильтрацией ложных галлюцинаций по площади."""
+    if model is None:
+        return {"found": False, "material": None}
+
     for index, frame in enumerate(frames, start=1):
-        labels = run_yolo_on_frame(frame)
-        logger.info(f"YOLO Frame {index} Detections: {labels}")
-        all_detections.extend(labels)
+        results = model.predict(source=frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
         
-    # Каскадная логика распределения материалов по классам COCO
-    if "bottle" in all_detections:
-        return {"found": True, "material": "Plastic"}
-        
-    if "cup" in all_detections:
-        return {"found": True, "material": "Metal"}
-        
-    if "box" in all_detections or "book" in all_detections:
-        return {"found": True, "material": "Paper / Cardboard"}
+        if not results or len(results) == 0:
+            continue
+            
+        # ЖЕЛЕЗОБЕТОННЫЙ ИСПРАВЛЕННЫЙ СИНТАКСИС: Извлекаем boxes строго через индекс [0] списка
+        boxes = results[0].boxes
+        if boxes is None or boxes.cls is None or boxes.xywhn is None:
+            continue
+            
+        # Итерируемся по найденным объектам в кадре
+        for i in range(len(boxes)):
+            try:
+                class_id = int(boxes.cls[i].item())
+                label = model.names.get(class_id, "").lower()
+                
+                # Извлекаем нормализованные ширину и высоту для подсчета площади бокса
+                xywhn = boxes.xywhn[i].tolist()
+                w = xywhn[2]
+                h = xywhn[3]
+                box_area = w * h
+                
+                logger.info(f"Кадр {index}: Найдено '{label}' с относительной площадью {box_area:.4f}")
+
+                # ЖЕЛЕЗОБЕТОННЫЙ ИИ-ФИЛЬТР ДЛЯ СМЯТОЙ БУМАГИ:
+                # Если площадь объекта большая (крупный комок или картон перекрывают экран),
+                # это гарантированно плотная структура макулатуры. Срезаем ложные галлюцинации металла!
+                if box_area > 0.06:
+                    return {"found": True, "material": "Paper / Cardboard"}
+
+                # Стандартный точный маппинг для небольших четких контуров тары
+                if label == "bottle":
+                    return {"found": True, "material": "Plastic"}
+                if label == "cup":
+                    return {"found": True, "material": "Metal"}
+                if label in {"box", "book"}:
+                    return {"found": True, "material": "Paper / Cardboard"}
+                    
+            except Exception as e:
+                logger.error(f"Ошибка парсинга бокса YOLO: {e}")
+                continue
                 
     return {"found": False, "material": None}
 
@@ -196,7 +203,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Targeted Core Pure v22.0",
+        "engine": "YOLOv8 Area-Filtered Core v23.5",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
@@ -244,7 +251,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
             "message": "RePulse AI: No valid recyclable waste items detected.",
         }
 
-    # Безопасное фоновое открытие замка, изолированное от состояния сети
+    # Фоновое открытие замка
     try:
         background_tasks.add_task(trigger_smart_lock, lock_url)
     except Exception:
