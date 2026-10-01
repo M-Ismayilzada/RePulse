@@ -28,7 +28,7 @@ DEFAULT_SMART_LOCK_URL = "http://192.168.4"
 FALLBACK_MATERIAL = "Recyclable (Buffer)"
 SMART_LOCK_TIMEOUT_SECONDS = 1.2
 
-# Оптимально высокая чувствительность
+# Оптимально высокая чувствительность для хакатона
 CONFIDENCE_THRESHOLD = 0.10 
 YOLO_WEIGHTS = "yolov8n.pt"
 
@@ -42,24 +42,33 @@ async def lifespan(app: FastAPI):
     global model
     logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
     
-    # ПАТЧ СЕКЬЮРИТИ PyTorch 2.6+: Разрешаем десериализацию весов официального релиза
+    # ФИКС СЕКЬЮРИТИ PYTORCH 2.6+: Регистрируем классы Ultralytics в безопасный контекст
     try:
         import torch
-        original_load = torch.load
-        def safe_torch_load(*args, **kwargs):
-            kwargs['weights_only'] = False
-            return original_load(*args, **kwargs)
-        torch.load = safe_torch_load
-        logger.info("PyTorch 2.6+ strict unpickler bypassed successfully.")
+        from ultralytics.nn.tasks import DetectionModel
+        from ultralytics.nn.modules.conv import Conv
+        from ultralytics.nn.modules.block import C2f, Bottleneck
+        from ultralytics.nn.modules.head import Detect
+        
+        torch.serialization.add_safe_globals([
+            DetectionModel, Conv, C2f, Bottleneck, Detect,
+            torch.nn.modules.container.Sequential,
+            torch.nn.modules.container.ModuleList,
+            torch.nn.modules.activation.SiLU,
+            torch.nn.modules.pooling.MaxPool2d,
+            torch.Size,
+            dict
+        ])
+        logger.info("PyTorch 2.6+ strict unpickler configurations allowlisted successfully.")
     except Exception as exc:
-        logger.warning(f"Could not apply PyTorch 2.6 security bypass: {exc}")
+        logger.warning(f"Could not apply PyTorch safe globals context: {exc}")
 
     model = YOLO(YOLO_WEIGHTS)
     yield
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="23.5.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="25.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,7 +86,7 @@ def strip_data_uri(payload: Any) -> str:
         raw = payload if isinstance(payload, str) else str(payload)
         raw = raw.strip()
         if "," in raw:
-            return raw.split(",", 1)[1].strip()
+            return raw.split(",", 1).strip()
         return raw
     except Exception:
         return ""
@@ -102,53 +111,60 @@ def decode_and_resize_frame(payload: Any) -> Optional[np.ndarray]:
         return None
 
 
-def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Умный анализ кадров через YOLOv8 с фильтрацией ложных галлюцинаций по площади."""
+def run_yolo_on_frame(frame: np.ndarray) -> list[dict[str, Any]]:
     if model is None:
-        return {"found": False, "material": None}
-
-    for index, frame in enumerate(frames, start=1):
-        results = model.predict(source=frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
+        return []
+    
+    results = model.predict(source=frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
+    detections: list[dict[str, Any]] = []
+    
+    if not results or len(results) == 0:
+        return detections
         
-        if not results or len(results) == 0:
-            continue
+    boxes = results.boxes
+    if boxes is None or boxes.cls is None or boxes.xywhn is None:
+        return detections
+        
+    for i in range(len(boxes)):
+        try:
+            class_id = int(boxes.cls[i].item())
+            label = model.names.get(class_id, str(class_id)).strip().lower()
             
-        # ЖЕЛЕЗОБЕТОННЫЙ ИСПРАВЛЕННЫЙ СИНТАКСИС: Извлекаем boxes строго через индекс [0] списка
-        boxes = results[0].boxes
-        if boxes is None or boxes.cls is None or boxes.xywhn is None:
-            continue
+            xywhn = boxes.xywhn[i].tolist()
+            w = xywhn
+            h = xywhn
+            box_area = w * h
             
-        # Итерируемся по найденным объектам в кадре
-        for i in range(len(boxes)):
-            try:
-                class_id = int(boxes.cls[i].item())
-                label = model.names.get(class_id, "").lower()
-                
-                # Извлекаем нормализованные ширину и высоту для подсчета площади бокса
-                xywhn = boxes.xywhn[i].tolist()
-                w = xywhn[2]
-                h = xywhn[3]
-                box_area = w * h
-                
-                logger.info(f"Кадр {index}: Найдено '{label}' с относительной площадью {box_area:.4f}")
+            detections.append({"label": label, "area": box_area})
+        except Exception:
+            continue
+    return detections
 
-                # ЖЕЛЕЗОБЕТОННЫЙ ИИ-ФИЛЬТР ДЛЯ СМЯТОЙ БУМАГИ:
-                # Если площадь объекта большая (крупный комок или картон перекрывают экран),
-                # это гарантированно плотная структура макулатуры. Срезаем ложные галлюцинации металла!
-                if box_area > 0.06:
-                    return {"found": True, "material": "Paper / Cardboard"}
 
-                # Стандартный точный маппинг для небольших четких контуров тары
-                if label == "bottle":
-                    return {"found": True, "material": "Plastic"}
-                if label == "cup":
-                    return {"found": True, "material": "Metal"}
-                if label in {"box", "book"}:
-                    return {"found": True, "material": "Paper / Cardboard"}
-                    
-            except Exception as e:
-                logger.error(f"Ошибка парсинга бокса YOLO: {e}")
-                continue
+def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
+    """Профессиональный каскадный анализатор: точные ИИ-классы важнее площадей."""
+    all_detections = []
+    
+    for index, frame in enumerate(frames, start=1):
+        detections = run_yolo_on_frame(frame)
+        logger.info(f"YOLO Frame {index} Objects: {detections}")
+        all_detections.extend(detections)
+        
+    # ШАГ 1: ЧЕСТНЫЙ ИИ-ПОИСК БУТЫЛОК И БАНОК (Приоритет №1)
+    # Если ИИ нашел бутылку Fuse Tea — это ВСЕГДА Plastic, плевать на её гигантский размер в кадре!
+    for obj in all_detections:
+        if obj["label"] == "bottle":
+            return {"found": True, "material": "Plastic"}
+        if obj["label"] == "cup":
+            return {"found": True, "material": "Metal"}
+
+    # ШАГ 2: БУМАЖНЫЙ ФИЛЬТР (Приоритет №2)
+    # Включается только если бутылок в кадре нет. Ловит скомканную бумагу по большой площади!
+    for obj in all_detections:
+        if obj["area"] > 0.06:
+            return {"found": True, "material": "Paper / Cardboard"}
+        if obj["label"] in {"box", "book"}:
+            return {"found": True, "material": "Paper / Cardboard"}
                 
     return {"found": False, "material": None}
 
@@ -203,7 +219,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Area-Filtered Core v23.5",
+        "engine": "YOLOv8 Cascading Filter Core v25.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
@@ -243,7 +259,6 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
         background_tasks.add_task(trigger_smart_lock, lock_url)
         return {"status": "success", "points": SUCCESS_POINTS, "detected_material": FALLBACK_MATERIAL}
 
-    # Честный FRAUD (отсечение пустого стола или пола)
     if not outcome["found"]:
         return {
             "status": "fraud",
@@ -251,12 +266,7 @@ async def detect_recycling(request: Request, background_tasks: BackgroundTasks) 
             "message": "RePulse AI: No valid recyclable waste items detected.",
         }
 
-    # Фоновое открытие замка
-    try:
-        background_tasks.add_task(trigger_smart_lock, lock_url)
-    except Exception:
-        pass
-
+    background_tasks.add_task(trigger_smart_lock, lock_url)
     return {
         "status": "success",
         "points": SUCCESS_POINTS,
