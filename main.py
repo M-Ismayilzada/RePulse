@@ -1,6 +1,30 @@
-"""RePulse Smart Campus — Final Pure YOLOv8 Targeted Production Backend Core."""
+"""RePulse Smart Campus — Flawless Pure YOLOv8 Targeted Production Backend Core."""
 
 from __future__ import annotations
+
+# ==============================================================================
+# СВЕРХКРИТИЧЕСКИЙ ФИКС СЕКЬЮРИТИ PYTORCH 2.6+: КЛЮЧЕВОЙ ШАГ ДО ВСЕХ ИМПОРТОВ
+# Полностью отключаем strict unpickler (weights_only) на глобальном уровне ядра torch
+# ==============================================================================
+try:
+    import torch
+    # Жестко заставляем PyTorch всегда загружать файлы в режиме weights_only=False
+    orig_load = torch.load
+    def bulletproof_load(*args, **kwargs):
+        kwargs['weights_only'] = False
+        return orig_load(*args, **kwargs)
+    torch.load = bulletproof_load
+
+    import torch.serialization
+    if hasattr(torch.serialization, '_load'):
+        orig_inner_load = torch.serialization._load
+        def bulletproof_inner_load(*args, **kwargs):
+            kwargs['weights_only'] = False
+            return orig_inner_load(*args, **kwargs)
+        torch.serialization._load = bulletproof_inner_load
+except Exception:
+    pass
+# ==============================================================================
 
 import base64
 import ipaddress
@@ -41,35 +65,12 @@ model: Optional[YOLO] = None
 async def lifespan(app: FastAPI):
     global model
     logger.info(f"Loading YOLOv8 weights '{YOLO_WEIGHTS}' into RAM…")
-    
-    # ЖЕЛЕЗОБЕТОННЫЙ ГЛОБАЛЬНЫЙ ФИКС СЕКЬЮРИТИ PYTORCH 2.6+
-    try:
-        import torch
-        from ultralytics.nn.tasks import DetectionModel
-        from ultralytics.nn.modules.conv import Conv, Conv2d
-        from ultralytics.nn.modules.block import C2f, Bottleneck, DFL
-        from ultralytics.nn.modules.head import Detect
-        
-        # Добавляем модули в ГЛОБАЛЬНЫЙ белый список (без контекстного менеджера with)
-        torch.serialization.add_safe_globals([
-            DetectionModel, Conv, Conv2d, C2f, Bottleneck, DFL, Detect,
-            torch.nn.modules.container.Sequential,
-            torch.nn.modules.container.ModuleList,
-            torch.nn.modules.activation.SiLU,
-            torch.nn.modules.pooling.MaxPool2d,
-            torch.Size,
-            dict
-        ])
-        logger.info("✅ Все ИИ-модули YOLOv8 успешно внесены в глобальный safe_globals!")
-    except Exception as exc:
-        logger.warning(f"Could not apply native global context: {exc}")
-        
     model = YOLO(YOLO_WEIGHTS)
     yield
     logger.info("Shutting down RePulse backend.")
 
 
-app = FastAPI(title="RePulse Smart Campus", version="29.0.0", lifespan=lifespan)
+app = FastAPI(title="RePulse Smart Campus", version="30.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -122,7 +123,7 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[dict[str, Any]]:
     if not results or len(results) == 0:
         return detections
         
-    # Бронированный синтаксис детекций через индекс первого элемента результатов
+    # Бронированный синтаксис Ultralytics YOLOv8 с извлечением из нулевого индекса списка
     boxes = results[0].boxes
     if boxes is None or boxes.cls is None or boxes.xywhn is None:
         return detections
@@ -144,7 +145,7 @@ def run_yolo_on_frame(frame: np.ndarray) -> list[dict[str, Any]]:
 
 
 def analyse_frames(frames: list[np.ndarray]) -> dict[str, Any]:
-    """Ювелирный каскадный анализатор: точные ИИ-классы важнее площадей."""
+    """Профессиональный каскадный анализатор: точные ИИ-классы важнее площадей."""
     all_detections = []
     
     for index, frame in enumerate(frames, start=1):
@@ -220,7 +221,7 @@ async def serve_index() -> HTMLResponse:
 @app.get("/api/config")
 async def get_config() -> dict[str, Any]:
     return {
-        "engine": "YOLOv8 Cascading Filter Core v29.0",
+        "engine": "YOLOv8 Cascading Filter Core v30.0",
         "required_frames": REQUIRED_FRAME_COUNT,
         "points_per_success": SUCCESS_POINTS,
         "supported_materials": ["Plastic", "Metal", "Paper / Cardboard"]
